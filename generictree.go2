@@ -349,7 +349,7 @@ func main() {
 		tree.Insert(values[i], data[i])
 	}
 
-	fmt.Println("\n*** Tree with string search values and string data ***\n")
+	fmt.Print("\n*** Tree with string search values and string data ***\n\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	tree.Traverse(tree.Root, func(n *Node[string, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
@@ -369,7 +369,7 @@ func main() {
 		intTree.Insert(keys[i], data[i])
 	}
 
-	fmt.Println("\n*** Tree with int search values and string data ***\n")
+	fmt.Print("\n*** Tree with int search values and string data ***\n\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	intTree.Traverse(intTree.Root, func(n *Node[int, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
@@ -389,7 +389,7 @@ func main() {
 		treeTree.Insert(keys[i], trees[i])
 	}
 
-	fmt.Println("\n*** Tree with int search values and Tree[string, string] data ***\n")
+	fmt.Print("\n*** Tree with int search values and Tree[string, string] data ***\n\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	treeTree.Traverse(treeTree.Root, func(n *Node[int, *Tree[string, string]]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
