@@ -349,6 +349,7 @@ func main() {
 		tree.Insert(values[i], data[i])
 	}
 
+	fmt.Println("\n*** Tree with string search values and string data ***\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	tree.Traverse(tree.Root, func(n *Node[string, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
@@ -368,30 +369,33 @@ func main() {
 		intTree.Insert(keys[i], data[i])
 	}
 
+	fmt.Println("\n*** Tree with int search values and string data ***\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	intTree.Traverse(intTree.Root, func(n *Node[int, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
 	fmt.Println()
 
-	fmt.Println("Pretty print (turned 90° anti-clockwise):")
+	fmt.Println("Pretty print")
 	intTree.PrettyPrint()
 
-	// Now how about a search tree of search trees?
+	// Now how about creating a search tree of search trees?
 	keys = []int{3, 1, 2}
-	// I am lazy here and only use three `nil` trees.
-	trees := []*Tree[string, string]{nil, nil, nil}
+	// I am lazy here and use the existing "string, string" tree thrice.
+	trees := []*Tree[string, string]{tree, tree, tree}
 
+	// This is a nested instantiation of generic types. Nice detail: the syntax really remains readable.
 	treeTree := &Tree[int, *Tree[string, string]]{}
 	for i := 0; i < len(keys); i++ {
 		treeTree.Insert(keys[i], trees[i])
 	}
 
+	fmt.Println("\n*** Tree with int search values and Tree[string, string] data ***\n")
 	fmt.Print("Sorted values: | ")
 	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	treeTree.Traverse(treeTree.Root, func(n *Node[int, *Tree[string, string]]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
 	fmt.Println()
 
-	fmt.Println("Pretty print (turned 90° anti-clockwise):")
+	fmt.Println("Pretty print:")
 	treeTree.PrettyPrint()
 
 	var val string
