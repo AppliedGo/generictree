@@ -296,7 +296,7 @@ func (t *Tree[Value, Data]) rebalance() {
 }
 
 func (t *Tree[Value, Data]) Find(s Value) (Data, bool) {
-	if t.Root == nil {
+	if t == nil || t.Root == nil {
 		// Same as in method `Find` above.
 		// We need to declare a variable in order to return the zero value of unknown type T.
 		var zero Data
@@ -406,6 +406,13 @@ func main() {
 
 	fmt.Println("Pretty print (turned 90° anti-clockwise):")
 	treeTree.PrettyPrint()
+
+	var val string
+	subtree, found := treeTree.Find(2)
+	if found {
+		val, found = subtree.Find("b")
+	}
+	fmt.Printf("Find \"s\" in subtree 2: %v (found: %t)\n", val, found)
 
 }
 
