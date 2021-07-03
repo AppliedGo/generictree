@@ -195,7 +195,7 @@ func (n *Node[Value, Data]) Insert(value Value, data Data) *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
-	fmt.Printf("rotateLeft %v", n.Value)
+	fmt.Printf("rotateLeft %v\n", n.Value)
 	r := n.Right
 	n.Right = r.Left
 	r.Left = n
@@ -205,7 +205,7 @@ func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rotateRight() *Node[Value, Data] {
-	fmt.Printf("rotateRight %v", n.Value)
+	fmt.Printf("rotateRight %v\n", n.Value)
 	l := n.Left
 	n.Left = l.Right
 	l.Right = n
@@ -229,7 +229,7 @@ func (n *Node[Value, Data]) rotateLeftRight() *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rebalance() *Node[Value, Data] {
-	fmt.Printf("rebalance %v", n.Value)
+	fmt.Printf("rebalance %v\n", n.Value)
 	n.Dump(0, "")
 	switch {
 	case n.Bal() < -1 && n.Left.Bal() == -1:
@@ -272,7 +272,7 @@ func (n *Node[Value, Data]) Dump(i int, lr string) {
 	if i > 0 {
 		indent = strings.Repeat(" ", (i-1)*4) + "+" + lr + "--"
 	}
-	fmt.Printf("%s%s[%d,%d]\n", indent, n.Value, n.Bal(), n.Height())
+	fmt.Printf("%s%v[%d,%d]\n", indent, n.Value, n.Bal(), n.Height())
 	n.Left.Dump(i+1, "L")
 	n.Right.Dump(i+1, "R")
 }
@@ -317,7 +317,7 @@ func (t *Tree[Value, Data]) Traverse(n *Node[Value, Data], f func(*Node[Value, D
 func (t *Tree[Value, Data]) PrettyPrint() {
 
 	printNode := func(n *Node[Value, Data], depth int) {
-		fmt.Printf("%s%s\n", strings.Repeat("  ", depth), n.Value)
+		fmt.Printf("%s%v\n", strings.Repeat("  ", depth), n.Value)
 	}
 	var walk func(*Node[Value, Data], int)
 	walk = func(n *Node[Value, Data], depth int) {
@@ -363,6 +363,50 @@ func main() {
 
 	fmt.Println("Pretty print (turned 90° anti-clockwise):")
 	tree.PrettyPrint()
+
+	// Let's try the same with integers as search values.
+	keys := []int{4, 2, 7, 7, 3, 5, 1, 8, 6, 9, 10, 12, 11}
+	// data remains the same slice of strings
+
+	// Here, Tree gets instantiated with the `string` type for both Value and Data.
+	// This is basically the same tree as in the original article about balanced trees.
+	intTree := &Tree[int, string]{}
+	for i := 0; i < len(keys); i++ {
+		fmt.Printf("Insert %d: %s\n", keys[i], data[i])
+		intTree.Insert(keys[i], data[i])
+		intTree.Dump()
+		fmt.Println()
+	}
+
+	fmt.Print("Sorted values: | ")
+	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
+	intTree.Traverse(intTree.Root, func(n *Node[int, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
+	fmt.Println()
+
+	fmt.Println("Pretty print (turned 90° anti-clockwise):")
+	intTree.PrettyPrint()
+
+	// Now how about a search tree of search trees?
+	keys = []int{3, 1, 2}
+	// I am lazy here and only use three `nil` trees.
+	trees := []*Tree[string, string]{nil, nil, nil}
+
+	treeTree := &Tree[int, *Tree[string, string]]{}
+	for i := 0; i < len(keys); i++ {
+		fmt.Printf("Insert %d: %s\n", keys[i], trees[i])
+		treeTree.Insert(keys[i], trees[i])
+		treeTree.Dump()
+		fmt.Println()
+	}
+
+	fmt.Print("Sorted values: | ")
+	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
+	treeTree.Traverse(treeTree.Root, func(n *Node[int, *Tree[string, string]]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
+	fmt.Println()
+
+	fmt.Println("Pretty print (turned 90° anti-clockwise):")
+	treeTree.PrettyPrint()
+
 }
 
 /*
