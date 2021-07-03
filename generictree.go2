@@ -195,7 +195,6 @@ func (n *Node[Value, Data]) Insert(value Value, data Data) *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
-	fmt.Printf("rotateLeft %v\n", n.Value)
 	r := n.Right
 	n.Right = r.Left
 	r.Left = n
@@ -205,7 +204,6 @@ func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rotateRight() *Node[Value, Data] {
-	fmt.Printf("rotateRight %v\n", n.Value)
 	l := n.Left
 	n.Left = l.Right
 	l.Right = n
@@ -229,8 +227,6 @@ func (n *Node[Value, Data]) rotateLeftRight() *Node[Value, Data] {
 }
 
 func (n *Node[Value, Data]) rebalance() *Node[Value, Data] {
-	fmt.Printf("rebalance %v\n", n.Value)
-	n.Dump(0, "")
 	switch {
 	case n.Bal() < -1 && n.Left.Bal() == -1:
 		return n.rotateRight()
@@ -350,10 +346,7 @@ func main() {
 	// This is basically the same tree as in the original article about balanced trees.
 	tree := &Tree[string, string]{}
 	for i := 0; i < len(values); i++ {
-		fmt.Println("Insert " + values[i] + ": " + data[i])
 		tree.Insert(values[i], data[i])
-		tree.Dump()
-		fmt.Println()
 	}
 
 	fmt.Print("Sorted values: | ")
@@ -372,10 +365,7 @@ func main() {
 	// This is basically the same tree as in the original article about balanced trees.
 	intTree := &Tree[int, string]{}
 	for i := 0; i < len(keys); i++ {
-		fmt.Printf("Insert %d: %s\n", keys[i], data[i])
 		intTree.Insert(keys[i], data[i])
-		intTree.Dump()
-		fmt.Println()
 	}
 
 	fmt.Print("Sorted values: | ")
@@ -393,10 +383,7 @@ func main() {
 
 	treeTree := &Tree[int, *Tree[string, string]]{}
 	for i := 0; i < len(keys); i++ {
-		fmt.Printf("Insert %d: %s\n", keys[i], trees[i])
 		treeTree.Insert(keys[i], trees[i])
-		treeTree.Dump()
-		fmt.Println()
 	}
 
 	fmt.Print("Sorted values: | ")
@@ -443,8 +430,6 @@ That's it. Happy tree planting!
 
 ___
 
-Changelog
 
-2021-06-18 fix issue #2 and streamline the code
 
 */
