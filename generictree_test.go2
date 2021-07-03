@@ -107,7 +107,7 @@ func (n *Node[Value, Data]) checkBalances() (problem string) {
 	}
 	rh, lh := n.Right.recHeight(), n.Left.recHeight()
 	if n.Bal() != rh-lh {
-		problem = fmt.Sprintf("Node %s has balance %d but right height %d and left height %d\n", n.Value, n.Bal(), rh, lh)
+		problem = fmt.Sprintf("Node %v has balance %d but right height %d and left height %d\n", n.Value, n.Bal(), rh, lh)
 	}
 	return problem + n.Right.checkBalances() + n.Left.checkBalances()
 }
