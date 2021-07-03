@@ -1,0 +1,399 @@
+/*
+<!--
+Copyright (c) 2016 Christoph Berger. Some rights reserved.
+Use of this text is governed by a Creative Commons Attribution Non-Commercial
+Share-Alike License that can be found in the LICENSE.txt file.
+
+The source code contained in this file may import third-party source code
+whose licenses are provided in the respective license files.
+-->
+
+<!--
+NOTE: The comments in this file are NOT godoc compliant. This is not an oversight.
+
+Comments and code in this file are used for describing and explaining a particular topic to the reader. While this file is a syntactically valid Go source file, its main purpose is to get converted into a blog article. The comments were created for learning and not for code documentation.
+-->
+
++++
+title = "How I turned a binary search tree into a generic data structure with go2go"
+description = "Steps taken to turn a binary search tree that has integer keys and string data into a generic tree that can have arbitrary (sortable) key types and arbitrary payload types, thanks to the upcoming generics feature in Go"
+author = "Christoph Berger"
+email = "chris@appliedgo.net"
+date = "2021-07-03"
+draft = true
+categories = ["Algorithms And Data Structures"]
+tags = ["Tree", "Balanced Tree", "Binary Tree", "Generics"]
+articletypes = ["Tutorial"]
++++
+
+Some time ago I wrote about how to create a balanced binary search tree. The search keys and the data payload were both plain strings. Now it is time to get rid of this limitation. go2go lets us do that while waiting for the official generics release.
+
+<!--more-->
+
+Adding generic data types and functions to a programming language is dead easy... to get wrong. Hence the Go team went to great lengths, and took all possible precautions, to design generics that don't suck. And IMHO, the current [proposal](https://blog.golang.org/generics-proposal) should appeal even to the ones who were skeptical about adding generics to Go *at all*.
+
+With the current generics design, it would seem fairly easy to create new generc data structures and generic functions, but what about sifting through old code to make it generic? Will there be any footguns?
+
+Let's find out.
+
+## The status quo
+
+In [this article](https://appliedgo.net/bintree), I created a binary tree, and in [another article](https://appliedgo.net/balancedtree), I turned the tree into a balanced tree (with AVL balancing logic). Both the search key type and the payload data type are `string`.
+
+```go
+type Node struct {
+	Value  string
+	Data   string
+	Left   *Node
+	Right  *Node
+	height int
+}
+```
+
+## What to change
+
+Obviously, we need to change the types of the fields `Value` and `Data`.
+
+Then, all functions that take or return either of these two fields, or that take a `Node` and access the fields through the `Node` struct, need to be adjusted. This applies to functions like `Insert()` or `min()`, for example.
+
+
+Let's walk through the code and adjust it as required.
+
+
+### Step 1: create generic types
+
+First, we need to let the compiler know which types supports comparison operators (`<`, `>=`, etc).
+For this, we create an interface type that lists all comparable types, using the keyword `type` to distinguish it from a behavioral interface.
+This type of interface is called a *type constraint*.
+
+*/
+
+//
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Looks like a classic interface
+type Ordered interface {
+	type int, // but the `type` keyword reveals that this is a type constraint
+	int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, string
+}
+
+/*
+A generic type has type parameters that are substituted by a concrete type when a
+new variable is declared based on the generic type.
+
+Here, we use two generic types: Value and Data.
+
+`Value` is the search value and hence has to be a comparable type.
+
+`Data`is the payload and can be any type.
+
+This is expressed by adding appropriate type constraints to the declaration.
+*/
+type (
+	Value[T Ordered] T
+	Data[T any]      T
+)
+
+/*
+
+Now we can write declarations like
+
+```go
+var v Value[int]
+var d Data[[]string]
+```
+
+to instantiate variables from a generic type, using a real type. Here, we
+just created an int as the search value and a slice of strings as data.
+
+
+### Step 2: Change existing types
+
+Now we take the `Node` struct shown above, and change the `Value` and `Data` fields
+from `string` to the new generic `Value` and `Data` types.
+
+This turns the Node struct itself into a generic type that we must declare with
+appropriate type parameters.
+
+Note that the `*Node` pointer types also need to be properly parameterized.
+
+When instantiating a `Node`, concrete types for the Value and Data parameters must be supplied.
+Then the fields `Value` and `Data` get instantiated to the given concrete types.
+
+*/
+type Node[Value Ordered, Data any] struct {
+	Value  Value
+	Data   Data
+	Left   *Node[Value, Data]
+	Right  *Node[Value, Data]
+	height int
+}
+
+/*
+### Step 3: change functions and methods
+
+Now let's look through all the functions and methods and make them polymorphic.
+
+Wherever a function receives a `Node` value, or a value string or data string,
+we need to change this to the new generic types.
+
+The same applies to method receivers.
+
+*/
+// This function is the reason that we need an `Ordered` constraint.
+func max[T Ordered](a, b T) T {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// Besides the receiver type, nothing needs to be changed here.
+func (n *Node[Value, Data]) Height() int {
+	if n == nil {
+		return 0
+	}
+	return n.height
+}
+
+func (n *Node[Value, Data]) Bal() int {
+	return n.Right.Height() - n.Left.Height()
+}
+
+// Here is the first occurrence of generic parameters and return types.
+// `value, data string` is now `value Value, data Data`.
+// The function body remains untouched, as all operations on `value`, `data`, `n.Value`, or `n.Data`
+// work the same even though the concrete types for `Value` and `Data` are not known yet.
+// Especially, `==` and `<` work for the `Value` type because of the `Ordered` type constraint.
+func (n *Node[Value, Data]) Insert(value Value, data Data) *Node[Value, Data] {
+	if n == nil {
+		return &Node[Value, Data]{
+			Value:  value,
+			Data:   data,
+			height: 1,
+		}
+	}
+	if n.Value == value {
+		n.Data = data
+		return n
+	}
+
+	if value < n.Value {
+		n.Left = n.Left.Insert(value, data)
+	} else {
+		n.Right = n.Right.Insert(value, data)
+	}
+
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+
+	return n.rebalance()
+}
+
+func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
+	fmt.Printf("rotateLeft %v", n.Value)
+	r := n.Right
+	n.Right = r.Left
+	r.Left = n
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	r.height = max(r.Left.Height(), r.Right.Height()) + 1
+	return r
+}
+
+func (n *Node[Value, Data]) rotateRight() *Node[Value, Data] {
+	fmt.Printf("rotateRight %v", n.Value)
+	l := n.Left
+	n.Left = l.Right
+	l.Right = n
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	l.height = max(l.Left.Height(), l.Right.Height()) + 1
+	return l
+}
+
+func (n *Node[Value, Data]) rotateRightLeft() *Node[Value, Data] {
+	n.Right = n.Right.rotateRight()
+	n = n.rotateLeft()
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	return n
+}
+
+func (n *Node[Value, Data]) rotateLeftRight() *Node[Value, Data] {
+	n.Left = n.Left.rotateLeft()
+	n = n.rotateRight()
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	return n
+}
+
+func (n *Node[Value, Data]) rebalance() *Node[Value, Data] {
+	fmt.Printf("rebalance %v", n.Value)
+	n.Dump(0, "")
+	switch {
+	case n.Bal() < -1 && n.Left.Bal() == -1:
+		return n.rotateRight()
+	case n.Bal() > 1 && n.Right.Bal() == 1:
+		return n.rotateLeft()
+	case n.Bal() < -1 && n.Left.Bal() == 1:
+		return n.rotateLeftRight()
+	case n.Bal() > 1 && n.Right.Bal() == -1:
+		return n.rotateRightLeft()
+	}
+	return n
+}
+
+func (n *Node[Value, Data]) Find(s Value) (Data, bool) {
+
+	if n == nil {
+		// Interesting detail: there is no dedicated expression for "zero value of type T".
+		// This can be resolved by instantiating a variable of type T and return that variable.
+		// An alternate way is to use named return parameters and use a naked `return` statement.
+		var zero Data
+		return zero, false
+	}
+
+	switch {
+	case s == n.Value:
+		return n.Data, true
+	case s < n.Value:
+		return n.Left.Find(s)
+	default:
+		return n.Right.Find(s)
+	}
+}
+
+func (n *Node[Value, Data]) Dump(i int, lr string) {
+	if n == nil {
+		return
+	}
+	indent := ""
+	if i > 0 {
+		indent = strings.Repeat(" ", (i-1)*4) + "+" + lr + "--"
+	}
+	fmt.Printf("%s%s[%d,%d]\n", indent, n.Value, n.Bal(), n.Height())
+	n.Left.Dump(i+1, "L")
+	n.Right.Dump(i+1, "R")
+}
+
+type Tree[Value Ordered, Data any] struct {
+	Root *Node[Value, Data]
+}
+
+func (t *Tree[Value, Data]) Insert(value Value, data Data) {
+	t.Root = t.Root.Insert(value, data)
+	if t.Root.Bal() < -1 || t.Root.Bal() > 1 {
+		t.rebalance()
+	}
+}
+
+func (t *Tree[Value, Data]) rebalance() {
+	if t == nil || t.Root == nil {
+		return
+	}
+	t.Root = t.Root.rebalance()
+}
+
+func (t *Tree[Value, Data]) Find(s Value) (Data, bool) {
+	if t.Root == nil {
+		// Same as in method `Find` above.
+		// We need to declare a variable in order to return the zero value of unknown type T.
+		var zero Data
+		return zero, false
+	}
+	return t.Root.Find(s)
+}
+
+func (t *Tree[Value, Data]) Traverse(n *Node[Value, Data], f func(*Node[Value, Data])) {
+	if n == nil {
+		return
+	}
+	t.Traverse(n.Left, f)
+	f(n)
+	t.Traverse(n.Right, f)
+}
+
+func (t *Tree[Value, Data]) PrettyPrint() {
+
+	printNode := func(n *Node[Value, Data], depth int) {
+		fmt.Printf("%s%s\n", strings.Repeat("  ", depth), n.Value)
+	}
+	var walk func(*Node[Value, Data], int)
+	walk = func(n *Node[Value, Data], depth int) {
+		if n == nil {
+			return
+		}
+		walk(n.Right, depth+1)
+		printNode(n, depth)
+		walk(n.Left, depth+1)
+	}
+
+	walk(t.Root, 0)
+}
+
+func (t *Tree[Value, Data]) Dump() {
+	t.Root.Dump(0, "")
+}
+
+/*
+### A demo
+
+*/
+
+//
+func main() {
+	values := []string{"d", "b", "g", "g", "c", "e", "a", "h", "f", "i", "j", "l", "k"}
+	data := []string{"delta", "bravo", "golang", "golf", "charlie", "echo", "alpha", "hotel", "foxtrot", "india", "juliett", "lima", "kilo"}
+
+	// Here, Tree gets instantiated with the `string` type for both Value and Data.
+	// This is basically the same tree as in the original article about balanced trees.
+	tree := &Tree[string, string]{}
+	for i := 0; i < len(values); i++ {
+		fmt.Println("Insert " + values[i] + ": " + data[i])
+		tree.Insert(values[i], data[i])
+		tree.Dump()
+		fmt.Println()
+	}
+
+	fmt.Print("Sorted values: | ")
+	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
+	tree.Traverse(tree.Root, func(n *Node[string, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
+	fmt.Println()
+
+	fmt.Println("Pretty print (turned 90° anti-clockwise):")
+	tree.PrettyPrint()
+}
+
+/*
+As always, the code is available on GitHub. Using the `-d` flag with `go get` to avoid that the binary gets auto-installed into $GOPATH/bin.
+
+```sh
+go get -d github.com/appliedgo/balancedtree
+cd $GOPATH/src/github.com/appliedgo/balancedtree
+go build
+./balancedtree
+```
+
+The code is also available on the [Go Playground](https://play.golang.org/p/dd1Z9U90JJ). (Subject to availabilty of the Playground service.)
+
+## Conclusion
+
+Keeping a binary search tree in balance is a bit more involved as it might seem at first. In this article, I have broken down the rebalancing to the bare minimum by removing the `Delete` operation entirely. If you want to dig deeper, here are a couple of useful readings:
+
+[Wikipedia on Tree Rotation](https://en.wikipedia.org/wiki/Tree_rotation): Richly illustrated, concise discussion of the rotation process.
+
+[German Wikipedia on AVL Trees](https://de.wikipedia.org/wiki/AVL-Baum): Sorry, this is German only, but when you scroll down to section 4, "Rebalancierung", there are a couple of detailed diagrams on single and double rotation. Here you can see how the subtree heights change after each rotation.
+
+[GitHub search for Go AVL libs](https://github.com/search?o=desc&q=language%3Ago+avl&s=stars&type=Repositories&utf8=%E2%9C%93): For advanced study :)
+
+
+That's it. Happy tree planting!
+
+___
+
+Changelog
+
+2021-06-18 fix issue #2 and streamline the code
+
+*/

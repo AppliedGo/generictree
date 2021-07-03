@@ -6,14 +6,17 @@ import (
 	"testing"
 )
 
-type tree struct {
+// To keep our test functions generic, we need to turn
+// the test types into generic types as well.
+type tree[Value Ordered, Data any] struct {
 	name  string
-	value []string
-	data  []string
+	value []Value
+	data  []Data
 }
 
 var (
-	trees = []tree{
+	// create test data with string search values and string data.
+	trees = []tree[string, string]{
 		{
 			name:  "empty",
 			value: []string{},
@@ -57,8 +60,9 @@ var (
 	}
 )
 
-func newTree(t tree) *Tree {
-	tree := &Tree{}
+// Instantiate the types upon use
+func newTree(t tree[string, string]) *Tree[string, string] {
+	tree := &Tree[string, string]{}
 	for i := 0; i < len(t.value); i++ {
 		tree.Insert(t.value[i], t.data[i])
 	}
@@ -66,14 +70,14 @@ func newTree(t tree) *Tree {
 }
 
 // calculate the height recursively, without relying on n.height
-func (n *Node) recHeight() int {
+func (n *Node[Value, Data]) recHeight() int {
 	if n == nil {
 		return 0
 	}
 	return 1 + max(n.Left.recHeight(), n.Right.recHeight())
 }
 
-func (n *Node) checkHeight() (*Node, bool) {
+func (n *Node[Value, Data]) checkHeight() (*Node[Value, Data], bool) {
 	if n == nil {
 		return nil, true
 	}
@@ -93,11 +97,11 @@ func (n *Node) checkHeight() (*Node, bool) {
 }
 
 // A (sub-)tree is balanced if the heights of the two child subtrees of any node differ by at most one.
-func (n *Node) isBalanced() bool {
+func (n *Node[Value, Data]) isBalanced() bool {
 	return n == nil || n.Right.recHeight()-n.Left.recHeight() <= 1
 }
 
-func (n *Node) checkBalances() (problem string) {
+func (n *Node[Value, Data]) checkBalances() (problem string) {
 	if n == nil {
 		return ""
 	}
@@ -108,19 +112,20 @@ func (n *Node) checkBalances() (problem string) {
 	return problem + n.Right.checkBalances() + n.Left.checkBalances()
 }
 
-func (t *Tree) containsAllElements(source tree) (string, bool) {
+func (t *Tree[Value, Data]) containsAllElements(source tree[Value, Data]) (Value, bool) {
 	for _, v := range source.value {
 		_, found := t.Find(v)
 		if !found {
 			return v, false
 		}
 	}
-	return "", true
+	var zero Value
+	return zero, true
 }
 
-func (t *Tree) isSorted() bool {
-	var sorted func(*Node) bool
-	sorted = func(n *Node) bool {
+func (t *Tree[Value, Data]) isSorted() bool {
+	var sorted func(*Node[Value, Data]) bool
+	sorted = func(n *Node[Value, Data]) bool {
 		if n == nil {
 			return true
 		}
