@@ -77,9 +77,9 @@ import (
 )
 
 // Looks like a classic interface
+// but the `type` keyword inside reveals that this is a type constraint
 type Ordered interface {
-	type int, // but the `type` keyword reveals that this is a type constraint
-	int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, string
+	type int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, string
 }
 
 /*
@@ -94,13 +94,15 @@ Here, we use two generic types: Value and Data.
 
 This is expressed by adding appropriate type constraints to the declaration.
 */
+//
 type (
+	// Type `Value` must be one of the types listed in the `Ordered` type constraint
 	Value[T Ordered] T
-	Data[T any]      T
+	// Type `Data` can be any type
+	Data[T any] T
 )
 
 /*
-
 Now we can write declarations like
 
 ```go
@@ -126,6 +128,7 @@ When instantiating a `Node`, concrete types for the Value and Data parameters mu
 Then the fields `Value` and `Data` get instantiated to the given concrete types.
 
 */
+//
 type Node[Value Ordered, Data any] struct {
 	Value  Value
 	Data   Data
@@ -145,7 +148,9 @@ we need to change this to the new generic types.
 The same applies to method receivers.
 
 */
-// This function is the reason that we need an `Ordered` constraint.
+// Here, we can see why we need an `Ordered` constraint.
+// Type `T` must support comparison operations, otherwise `a > b` would fail
+// at runtime if T is instantiated with a non-comparable type.
 func max[T Ordered](a, b T) T {
 	if a > b {
 		return a
@@ -154,6 +159,9 @@ func max[T Ordered](a, b T) T {
 }
 
 // Besides the receiver type, nothing needs to be changed here.
+// `*Node` becomes `*Node[Value, Data]`.
+// Later, when instantiating a struct of type `Node`, concrete types
+// need to be supplied for `Value` and `Data`.
 func (n *Node[Value, Data]) Height() int {
 	if n == nil {
 		return 0
