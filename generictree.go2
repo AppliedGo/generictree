@@ -30,15 +30,19 @@ Some time ago I wrote about how to create a balanced binary search tree. The sea
 
 <!--more-->
 
-Adding generic data types and functions to a programming language is dead easy... to get wrong. Hence the Go team went to great lengths, and took all possible precautions, to design generics that don't suck. And IMHO, the current [proposal](https://blog.golang.org/generics-proposal) should appeal even to the ones who were skeptical about adding generics to Go *at all*.
+Warning: This article is super boring! It turned out that converting a container type into a generic container type is quite straightforward with `go2go` and shows no surprises.
+
+Which is actually a good sign.
+
+It is a good sign because adding generic data types and functions to a programming language is dead easy... to get wrong. Hence the Go team went to great lengths, and took all possible precautions, to design generics that don't suck. And IMHO, the current [proposal](https://blog.golang.org/generics-proposal) should appeal even to the ones who were skeptical about adding generics to Go *at all*.
 
 With the current generics design, it would seem fairly easy to create new generc data structures and generic functions, but what about sifting through old code to make it generic? Will there be any footguns?
 
 Let's find out.
 
-## The status quo
+## The *status quo* of the search tree code
 
-In [this article](https://appliedgo.net/bintree), I created a binary tree, and in [another article](https://appliedgo.net/balancedtree), I turned the tree into a balanced tree (with AVL balancing logic). Both the search key type and the payload data type are `string`.
+In [this article](https://appliedgo.net/bintree), I created a binary tree, and in [another article](https://appliedgo.net/balancedtree), I turned the tree into a balanced tree (with AVL balancing logic). Both the search key and the payload data are of type `string`.
 
 ```go
 type Node struct {
@@ -68,7 +72,7 @@ This type of interface is called a *type constraint*.
 
 */
 
-//
+// As always, the code starts with package and import statements, as the whole blog article is generated from a single, compilable Go source file.
 package main
 
 import (
@@ -77,7 +81,7 @@ import (
 )
 
 // Looks like a classic interface
-// but the `type` keyword inside reveals that this is a type constraint
+// but the `type` keyword inside reveals that this is a type constraint.
 type Ordered interface {
 	type int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, string
 }
@@ -96,9 +100,9 @@ This is expressed by adding appropriate type constraints to the declaration.
 */
 //
 type (
-	// Type `Value` must be one of the types listed in the `Ordered` type constraint
+	// Type `Value` must be one of the types listed in the `Ordered` type constraint.
 	Value[T Ordered] T
-	// Type `Data` can be any type
+	// Type `Data` can be any type.
 	Data[T any] T
 )
 
@@ -110,7 +114,7 @@ var v Value[int]
 var d Data[[]string]
 ```
 
-to instantiate variables from a generic type, using a real type. Here, we
+to instantiate variables from a generic type (such as `Value`), using a real type (such as `int`). Here, we
 just created an int as the search value and a slice of strings as data.
 
 
@@ -128,9 +132,13 @@ When instantiating a `Node`, concrete types for the Value and Data parameters mu
 Then the fields `Value` and `Data` get instantiated to the given concrete types.
 
 */
-//
+// type Node struct {\
+//    Value string\
+//    Data string\
+//    Right *Node\
+//    Left *Node
 type Node[Value Ordered, Data any] struct {
-	Value  Value
+	Value Value
 	Data   Data
 	Left   *Node[Value, Data]
 	Right  *Node[Value, Data]
@@ -143,7 +151,7 @@ type Node[Value Ordered, Data any] struct {
 Now let's look through all the functions and methods and make them polymorphic.
 
 Wherever a function receives a `Node` value, or a value string or data string,
-we need to change this to the new generic types.
+we need to change this to the respective generic type, for example, `Node[Value, Data]`.
 
 The same applies to method receivers.
 
@@ -159,7 +167,7 @@ func max[T Ordered](a, b T) T {
 }
 
 // Besides the receiver type, nothing needs to be changed here.
-// `*Node` becomes `*Node[Value, Data]`.
+// `*Node` becomes `*Node[Value, Data]`.\
 // Later, when instantiating a struct of type `Node`, concrete types
 // need to be supplied for `Value` and `Data`.
 func (n *Node[Value, Data]) Height() int {
@@ -173,11 +181,12 @@ func (n *Node[Value, Data]) Bal() int {
 	return n.Right.Height() - n.Left.Height()
 }
 
-// Here is the first occurrence of generic parameters and return types.
-// `value, data string` is now `value Value, data Data`.
+// Here is the first occurrence of generic parameters and return types.\
+// `value, data string` is now \
+// `value Value, data Data`.\
 // The function body remains untouched, as all operations on `value`, `data`, `n.Value`, or `n.Data`
-// work the same even though the concrete types for `Value` and `Data` are not known yet.
-// Especially, `==` and `<` work for the `Value` type because of the `Ordered` type constraint.
+// work the same, even though the concrete types for `Value` and `Data` are not known yet.\
+// Especially, `==` and `<` work fine for the `Value` type because of the `Ordered` type constraint.
 func (n *Node[Value, Data]) Insert(value Value, data Data) *Node[Value, Data] {
 	if n == nil {
 		return &Node[Value, Data]{
@@ -251,8 +260,8 @@ func (n *Node[Value, Data]) rebalance() *Node[Value, Data] {
 func (n *Node[Value, Data]) Find(s Value) (Data, bool) {
 
 	if n == nil {
-		// Interesting detail: there is no dedicated expression for "zero value of type T".
-		// This can be resolved by instantiating a variable of type T and return that variable.
+		// Interesting detail: `go2go` has no dedicated expression for "zero value of type T".
+		// This is resolved here by instantiating a variable of type T and returning that variable.\
 		// An alternate way is to use named return parameters and use a naked `return` statement.
 		var zero Data
 		return zero, false
@@ -341,7 +350,9 @@ func (t *Tree[Value, Data]) Dump() {
 }
 
 /*
-### A demo
+## How to use the new generic tree type
+
+Now is the moment where we can instantiate the generic `Tree[Value, Data]` type into something tangible like `Tree[int,string]`.
 
 */
 
@@ -385,8 +396,13 @@ func main() {
 
 	fmt.Println("Pretty print")
 	intTree.PrettyPrint()
+/*
+### How about creating a search tree of search trees?
 
-	// Now how about creating a search tree of search trees?
+Let's feed a search tree with search trees as payload data. \
+Will the syntax of nested generic type instantiatons become unwieldy?
+*/
+// The search values shall be integers.
 	keys = []int{3, 1, 2}
 	// I am lazy here and use the existing "string, string" tree thrice.
 	trees := []*Tree[string, string]{tree, tree, tree}
@@ -416,29 +432,23 @@ func main() {
 }
 
 /*
-As always, the code is available on GitHub. Using the `-d` flag with `go get` to avoid that the binary gets auto-installed into $GOPATH/bin.
 
-```sh
-go get -d github.com/appliedgo/balancedtree
-cd $GOPATH/src/github.com/appliedgo/balancedtree
-go build
-./balancedtree
-```
+## How to run the code
 
-The code is also available on the [Go Playground](https://play.golang.org/p/dd1Z9U90JJ). (Subject to availabilty of the Playground service.)
+At the moment of this writinig, a `go2go` installation is requred to run this code locally. Hence I recommend using the go2go playground for a quick test.
+
 
 ## Conclusion
 
-Keeping a binary search tree in balance is a bit more involved as it might seem at first. In this article, I have broken down the rebalancing to the bare minimum by removing the `Delete` operation entirely. If you want to dig deeper, here are a couple of useful readings:
+Turning an existing container data type into a generic one has only few surprises. Hey, I told you it will be boring!
 
-[Wikipedia on Tree Rotation](https://en.wikipedia.org/wiki/Tree_rotation): Richly illustrated, concise discussion of the rotation process.
+With a few checks in mind, you should be ready for generalizing... genericizing... genericking... uh, whatever... your existing container data types. 
 
-[German Wikipedia on AVL Trees](https://de.wikipedia.org/wiki/AVL-Baum): Sorry, this is German only, but when you scroll down to section 4, "Rebalancierung", there are a couple of detailed diagrams on single and double rotation. Here you can see how the subtree heights change after each rotation.
+- 
+- Look through your `fmt.Printf` statements. Most likely, you will need to adjust a few placeholders to `%v` to avoid errors.
 
-[GitHub search for Go AVL libs](https://github.com/search?o=desc&q=language%3Ago+avl&s=stars&type=Repositories&utf8=%E2%9C%93): For advanced study :)
 
-
-That's it. Happy tree planting!
+That's it. Happy generic coding! ʕ◔ϖ◔ʔ
 
 ___
 
