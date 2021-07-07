@@ -1,6 +1,6 @@
 /*
 <!--
-Copyright (c) 2016 Christoph Berger. Some rights reserved.
+Copyright (c) 2021 Christoph Berger. Some rights reserved.
 Use of this text is governed by a Creative Commons Attribution Non-Commercial
 Share-Alike License that can be found in the LICENSE.txt file.
 
@@ -449,7 +449,7 @@ And because doing this can answer an interesting question: Will the syntax of ne
 
 ## How to run the code
 
-At the moment of this writing, a `go2go` installation is required to run this code locally. Hence I recommend [using the go2go playground](https://go2goplay.golang.org/p/0to5N-1uVfK) for a quick test.
+At the moment of this writing, a `go2go` installation is required to run this code locally. Hence I recommend [using the go2go playground](https://go2goplay.golang.org/p/Zh9KQ8DTerw) for a quick test.
 
 
 ## Conclusion
