@@ -22,7 +22,7 @@ email = "chris@appliedgo.net"
 date = "2021-07-03"
 draft = true
 categories = ["Algorithms And Data Structures"]
-tags = ["Tree", "Balanced Tree", "Binary Tree", "Generics"]
+tags = ["Tree", "Balanced Tree", "Binary Tree", "generics"]
 articletypes = ["Tutorial"]
 +++
 
@@ -36,7 +36,7 @@ Which is actually a good sign.
 
 It is a good sign because adding generic data types and functions to a programming language is dead easy... to get wrong. Hence the Go team went to great lengths, and took all possible precautions, to design generics that don't suck. And IMHO, the current [proposal](https://blog.golang.org/generics-proposal) should appeal even to the ones who were skeptical about adding generics to Go *at all*.
 
-With the current generics design, it would seem fairly easy to create new generc data structures and generic functions, but what about sifting through old code to make it generic? Will there be any footguns?
+With the current generics design, it would seem fairly easy to create new generic data structures and generic functions, but what about sifting through old code to make it generic? Will there be any footguns?
 
 Let's find out.
 
@@ -124,12 +124,11 @@ Now we take the `Node` struct shown above, and change the `Value` and `Data` fie
 from `string` to the new generic `Value` and `Data` types.
 
 This turns the Node struct itself into a generic type that we must declare with
-appropriate type parameters.
+appropriate type parameters. In general, any generic types declared inside a struct bubble up to
+the struct declaration.
 
-Note that the `*Node` pointer types also need to be properly parameterized.
+Note that the `*Node` pointer types inside the struct also need to be properly parameterized.
 
-When instantiating a `Node`, concrete types for the Value and Data parameters must be supplied.
-Then the fields `Value` and `Data` get instantiated to the given concrete types.
 
 */
 // type Node struct {\
@@ -146,6 +145,16 @@ type Node[Value Ordered, Data any] struct {
 }
 
 /*
+
+*(In the comment block, this is how the struct looked before.)*
+
+When instantiating a `Node`, concrete types for the Value and Data parameters must be supplied.
+Then the fields `Value` and `Data` get instantiated to the given concrete types.
+
+Example: `n := *Node{uint16, []byte}`
+
+
+
 ### Step 3: change functions and methods
 
 Now let's look through all the functions and methods and make them polymorphic.
@@ -211,6 +220,8 @@ func (n *Node[Value, Data]) Insert(value Value, data Data) *Node[Value, Data] {
 	return n.rebalance()
 }
 
+// From here onwards, the same pattern repeats. The function signatures receive generic parameters for the Node type, and the function bodies remain largely unmodified. \
+// `#boring`
 func (n *Node[Value, Data]) rotateLeft() *Node[Value, Data] {
 	r := n.Right
 	n.Right = r.Left
@@ -260,9 +271,10 @@ func (n *Node[Value, Data]) rebalance() *Node[Value, Data] {
 func (n *Node[Value, Data]) Find(s Value) (Data, bool) {
 
 	if n == nil {
-		// Interesting detail: `go2go` has no dedicated expression for "zero value of type T".
+		// Interesting detail: `go2go` has no dedicated expression for "zero value of type T" (yet).
 		// This is resolved here by instantiating a variable of type T and returning that variable.\
-		// An alternate way is to use named return parameters and use a naked `return` statement.
+		// An alternate way is shown below, and a third alternative is to use named return parameters 
+		// and use a naked `return` statement.
 		var zero Data
 		return zero, false
 	}
@@ -310,10 +322,10 @@ func (t *Tree[Value, Data]) rebalance() {
 
 func (t *Tree[Value, Data]) Find(s Value) (Data, bool) {
 	if t == nil || t.Root == nil {
-		// Same as in method `Find` above.
-		// We need to declare a variable in order to return the zero value of unknown type T.
-		var zero Data
-		return zero, false
+		// Same situation as in method `Find` above.\
+		// Here, we use `new` to create a zero value on the fly.\
+		// `new` returns a pointer, and hence we need to add the dereferencing operator.
+		return *new(Data), false
 	}
 	return t.Root.Find(s)
 }
@@ -396,11 +408,13 @@ func main() {
 
 	fmt.Println("Pretty print")
 	intTree.PrettyPrint()
-	/*
-	   ### How about creating a search tree of search trees?
 
-	   Let's feed a search tree with search trees as payload data. \
-	   Will the syntax of nested generic type instantiatons become unwieldy?
+	/*
+### How about creating a search tree of search trees?
+
+Let's feed a search tree with search trees as payload data. \
+Because why not?\
+And because doing this can answer an interesting question: Will the syntax of nested generic type instantiatons become unwieldy?
 	*/
 	// The search values shall be integers.
 	keys = []int{3, 1, 2}
@@ -435,7 +449,7 @@ func main() {
 
 ## How to run the code
 
-At the moment of this writing, a `go2go` installation is required to run this code locally. Hence I recommend using the go2go playground for a quick test.
+At the moment of this writing, a `go2go` installation is required to run this code locally. Hence I recommend [using the go2go playground](https://go2goplay.golang.org/p/0to5N-1uVfK) for a quick test.
 
 
 ## Conclusion
@@ -444,9 +458,17 @@ Turning an existing container data type into a generic one has only few surprise
 
 With a few checks in mind, you should be ready for generizing... generalizing... genericizing... genericking... uh, whatever... your existing container data types.
 
--
-- Look through your `fmt.Printf` statements. Most likely, you will need to adjust a few placeholders to `%v` to avoid errors.
+- Review all the operations your code applies to the original types. If these operations apply to a certain kind of data type only, your generic type needs a type constraint. 
+- Look through your `fmt.Printf` statements. Most likely, you will need to change a few type-specific placeholders to a general `%v` to avoid errors.
+- Look for return statements that return a zero value. Typically, these occur when returning a non-nil error.\
+  Example: `return "", errors.New(...)`. \
+  Use one of the workaround shown above:
+	- Workaround 1: declare a variable of type T, which defaults to the type's zero value. Return that variable.
+	- Workaround 2: use `*new(T)`, which instantiates T, returns a pointer, and dereferences that pointer. The result is a zero value of T. Return that result.
 
+(See the tree code above for working examples.)
+
+In summary, I am pleased about how easy the conversion process turned out to be, and also how readable the result is. Once generics are included in an official release, workarounds [like the ones I described in another article](https://appliedgo.net/generics) are not required anymore. 
 
 That's it. Happy generic coding! ʕ◔ϖ◔ʔ
 
