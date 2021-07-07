@@ -391,10 +391,9 @@ func main() {
 
 	// Let's try the same with integers as search values.
 	keys := []int{4, 2, 7, 7, 3, 5, 1, 8, 6, 9, 10, 12, 11}
-	// data remains the same slice of strings
+	// No new `data` slice here. It remains the same slice of strings.
 
-	// Here, Tree gets instantiated with the `string` type for both Value and Data.
-	// This is basically the same tree as in the original article about balanced trees.
+	// This time, Tree gets instantiated with `int` and `string` for Value and Data, respectively.
 	intTree := &Tree[int, string]{}
 	for i := 0; i < len(keys); i++ {
 		intTree.Insert(keys[i], data[i])
@@ -402,7 +401,6 @@ func main() {
 
 	fmt.Print("\n*** Tree with int search values and string data ***\n\n")
 	fmt.Print("Sorted values: | ")
-	// As with `*Tree` above, `*Node` also needs to get instantiated with concrete types.
 	intTree.Traverse(intTree.Root, func(n *Node[int, string]) { fmt.Print(n.Value, ": ", n.Data, " | ") })
 	fmt.Println()
 
