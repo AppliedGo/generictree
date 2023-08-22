@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 // To keep our test functions generic, we need to turn
 // the test types into generic types as well.
-type tree[Value Ordered, Data any] struct {
+type tree[Value cmp.Ordered, Data any] struct {
 	name  string
 	value []Value
 	data  []Data

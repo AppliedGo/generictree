@@ -30,6 +30,11 @@ Some time ago I wrote about how to create a balanced binary search tree. The sea
 
 <!--more-->
 
+___
+
+**Update:** Go type parameters have changed since `go2go`. The article has been updated to match the syntax and semantics of type parameters in Go 1.18 and use the `cmp` package of Go 1.21 instead of `constraints`.
+___
+
 Warning: This article is super boring! It turned out that converting a container type into a generic container type is quite straightforward with `go2go` and shows no surprises.
 
 Which is actually a good sign.
@@ -58,76 +63,35 @@ type Node struct {
 
 ## What to change
 
-Obviously, we need to change the types of the fields `Value` and `Data`.
+Obviously, I need to change the types of the fields `Value` and `Data`.
 
 Then, all functions that take or return either of these two fields, or that take a `Node` and access the fields through the `Node` struct, need to be adjusted. This applies to functions like `Insert()` or `min()`, for example.
 
 
 Let's walk through the code and adjust it as required.
 
-
-### Step 1: create generic types
-
-First, we need to let the compiler know which types supports comparison operators (`<`, `>=`, etc).
-For this, we create an interface type that lists all comparable types, using the keyword `type` to distinguish it from a behavioral interface.
-This type of interface is called a *type constraint*.
-
 */
 
 // As always, the code starts with package and import statements, as the whole blog article is generated from a single, compilable Go source file.
+//
+// Note the import of the 'cmp' package (added in Go 1.21). This package provides types and functions for comparing ordered values, including the `Ordered` constraint that I need for being able to compare and sort the nodes.
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 )
 
-// Looks like a classic interface
-// but the `type` keyword inside reveals that this is a type constraint.
-type Ordered interface {
-	type int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr, float32, float64, string
-}
-
 /*
-A generic type has type parameters that are substituted by a concrete type when a
-new variable is declared based on the generic type.
 
-Here, we use two generic types: Value and Data.
+### Step 1: Change existing types
 
-`Value` is the search value and hence has to be a comparable type.
+First, I take the `Node` struct shown above, and change the `Value` and `Data` fields
+from `string` to the new generic `Value` and `Data` types. While the Value type must be ordered, the Data type can be anything.
 
-`Data`is the payload and can be any type.
-
-This is expressed by adding appropriate type constraints to the declaration.
-*/
-//
-type (
-	// Type `Value` must be one of the types listed in the `Ordered` type constraint.
-	Value[T Ordered] T
-	// Type `Data` can be any type.
-	Data[T any] T
-)
-
-/*
-Now we can write declarations like
-
-```go
-var v Value[int]
-var d Data[[]string]
-```
-
-to instantiate variables from a generic type (such as `Value`), using a real type (such as `int`). Here, we
-just created an int as the search value and a slice of strings as data.
-
-
-### Step 2: Change existing types
-
-Now we take the `Node` struct shown above, and change the `Value` and `Data` fields
-from `string` to the new generic `Value` and `Data` types.
-
-This turns the Node struct itself into a generic type that we must declare with
-appropriate type parameters. In general, any generic types declared inside a struct bubble up to
-the struct declaration.
+This turns the Node struct itself into a generic type that I now must declare with
+appropriate type parameters. In general, any generic types declared inside a struct bubble up to the struct type declaration.
 
 Note that the `*Node` pointer types inside the struct also need to be properly parameterized.
 
@@ -138,7 +102,7 @@ Note that the `*Node` pointer types inside the struct also need to be properly p
 //    Data string\
 //    Right *Node\
 //    Left *Node
-type Node[Value Ordered, Data any] struct {
+type Node[Value cmp.Ordered, Data any] struct {
 	Value  Value
 	Data   Data
 	Left   *Node[Value, Data]
@@ -157,20 +121,20 @@ Example: `n := *Node{uint16, []byte}`
 
 
 
-### Step 3: change functions and methods
+### Step 2: change functions and methods
 
 Now let's look through all the functions and methods and make them polymorphic.
 
 Wherever a function receives a `Node` value, or a value string or data string,
-we need to change this to the respective generic type, for example, `Node[Value, Data]`.
+I need to change this to the respective generic type, for example, `Node[Value, Data]`.
 
 The same applies to method receivers.
 
 */
-// Here, we can see why we need an `Ordered` constraint.
+// Here, you can see why I need an `Ordered` constraint.
 // Type `T` must support comparison operations, otherwise `a > b` would fail
 // at runtime if T is instantiated with a non-comparable type.
-func max[T Ordered](a, b T) T {
+func max[T cmp.Ordered](a, b T) T {
 	if a > b {
 		return a
 	}
@@ -275,7 +239,7 @@ func (n *Node[Value, Data]) Find(s Value) (Data, bool) {
 	if n == nil {
 		// Interesting detail: `go2go` has no dedicated expression for "zero value of type T" (yet).
 		// This is resolved here by instantiating a variable of type T and returning that variable.\
-		// An alternate way is shown below, and a third alternative is to use named return parameters 
+		// An alternate way is shown below, and a third alternative is to use named return parameters
 		// and use a naked `return` statement.
 		var zero Data
 		return zero, false
@@ -304,7 +268,7 @@ func (n *Node[Value, Data]) Dump(i int, lr string) {
 	n.Right.Dump(i+1, "R")
 }
 
-type Tree[Value Ordered, Data any] struct {
+type Tree[Value cmp.Ordered, Data any] struct {
 	Root *Node[Value, Data]
 }
 
@@ -366,11 +330,10 @@ func (t *Tree[Value, Data]) Dump() {
 /*
 ## How to use the new generic tree type
 
-Now is the moment where we can instantiate the generic `Tree[Value, Data]` type into something tangible like `Tree[int,string]`.
+Now is the moment where I can instantiate the generic `Tree[Value, Data]` type into something tangible like `Tree[int,string]`.
 
 */
 
-//
 func main() {
 	values := []string{"d", "b", "g", "g", "c", "e", "a", "h", "f", "i", "j", "l", "k"}
 	data := []string{"delta", "bravo", "golang", "golf", "charlie", "echo", "alpha", "hotel", "foxtrot", "india", "juliett", "lima", "kilo"}
@@ -410,11 +373,11 @@ func main() {
 	intTree.PrettyPrint()
 
 	/*
-### How about creating a search tree of search trees?
+		### How about creating a search tree of search trees?
 
-Let's feed a search tree with search trees as payload data. \
-Because why not?\
-And because doing this can answer an interesting question: Will the syntax of nested generic type instantiatons become unwieldy?
+		Let's feed a search tree with search trees as payload data. \
+		Because why not?\
+		And because doing this can answer an interesting question: Will the syntax of nested generic type instantiatons become unwieldy?
 	*/
 	// The search values shall be integers.
 	keys = []int{3, 1, 2}
@@ -449,7 +412,7 @@ And because doing this can answer an interesting question: Will the syntax of ne
 
 ## How to run the code
 
-At the moment of this writing, a `go2go` installation is required to run this code locally. Hence I recommend [using the go2go playground](https://go2goplay.golang.org/p/Zh9KQ8DTerw) for a quick test.
+This [code](https://github.com/appliedgo/generictree) runs with Go 1.21 or later. It also runs fine in the [Go Playground](https://go.dev/play/p/Jw9f9zM_bUi).
 
 
 ## Conclusion
@@ -458,7 +421,7 @@ Turning an existing container data type into a generic one has only few surprise
 
 With a few checks in mind, you should be ready for generizing... generalizing... genericizing... genericking... uh, whatever... your existing container data types.
 
-- Review all the operations your code applies to the original types. If these operations apply to a certain kind of data type only, your generic type needs a type constraint. 
+- Review all the operations your code applies to the original types. If these operations apply to a certain kind of data type only, your generic type needs a type constraint.
 - Look through your `fmt.Printf` statements. Most likely, you will need to change a few type-specific placeholders to a general `%v` to avoid errors.
 - Look for return statements that return a zero value. Typically, these occur when returning a non-nil error.\
   Example: `return "", errors.New(...)`. \
@@ -468,7 +431,7 @@ With a few checks in mind, you should be ready for generizing... generalizing...
 
 (See the tree code above for working examples.)
 
-In summary, I am pleased about how easy the conversion process turned out to be, and also how readable the result is. Once generics are included in an official release, workarounds [like the ones I described in another article](https://appliedgo.net/generics) are not required anymore. 
+In summary, I am pleased about how easy the conversion process turned out to be, and also how readable the result is. Once generics are included in an official release, workarounds [like the ones I described in another article](https://appliedgo.net/generics) are not required anymore.
 
 That's it. Happy generic coding! ʕ◔ϖ◔ʔ
 
@@ -476,5 +439,15 @@ ___
 
 *Trees and background image courtesy of artists at Pixabay*
 
+Changelog
 
+2023-08-22
+
+- Updated the code to work with Go 1.21. New: The `cmp` package. Obsolete: the `constraints` package. Link to the playground updated accordingly.
+- Added missing link to the github repo of this article.
+
+2022-01-04
+
+- Updated the code from go2go version of May 2021 to the current dev branch (which is a pre-release version of Go 1.18). The code is now compatible with Go 1.18. The playground link now opens the current dev branch rather than the (obsolete) go2go Playground.
+- I also took the chance to change "we" to "I" to match the title of the article.
 */
