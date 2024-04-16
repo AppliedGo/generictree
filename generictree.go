@@ -333,7 +333,7 @@ func (t *Tree[Value, Data]) Dump() {
 Now is the moment where I can instantiate the generic `Tree[Value, Data]` type into something tangible like `Tree[int,string]`.
 
 */
-
+//
 func main() {
 	values := []string{"d", "b", "g", "g", "c", "e", "a", "h", "f", "i", "j", "l", "k"}
 	data := []string{"delta", "bravo", "golang", "golf", "charlie", "echo", "alpha", "hotel", "foxtrot", "india", "juliett", "lima", "kilo"}
