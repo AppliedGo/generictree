@@ -49,7 +49,7 @@ Let's find out.
 
 ## The *status quo* of the search tree code
 
-In [this article]({{< ref "/bintree" >}}), I created a binary tree, and in [another article]({{< ref "/balancedtree" >}}), I turned the tree into a balanced tree (with AVL balancing logic). Both the search key and the payload data are of type `string`.
+In [this article]({{< ref "/post/bintree" >}}), I created a binary tree, and in [another article]({{< ref "/post/balancedtree" >}}), I turned the tree into a balanced tree (with AVL balancing logic). Both the search key and the payload data are of type `string`.
 
 ```go
 type Node struct {
@@ -431,7 +431,7 @@ With a few checks in mind, you should be ready for generizing... generalizing...
 
 (See the tree code above for working examples.)
 
-In summary, I am pleased about how easy the conversion process turned out to be, and also how readable the result is. Once generics are included in an official release, workarounds [like the ones I described in another article]({{< ref "/generics" >}}) are not required anymore.
+In summary, I am pleased about how easy the conversion process turned out to be, and also how readable the result is. Once generics are included in an official release, workarounds [like the ones I described in another article]({{< ref "/post/generics" >}}) are not required anymore.
 
 That's it. Happy generic coding! ʕ◔ϖ◔ʔ
 
